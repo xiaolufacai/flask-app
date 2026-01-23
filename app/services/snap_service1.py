@@ -5,7 +5,8 @@ import random
 import string
 from playwright.sync_api import sync_playwright
 
-class PlaywrightSnapService:
+
+class PlaywrightSnapService1:
     @staticmethod
     def _chmod_644(path):
         """统一设置图片权限为 644"""
@@ -71,7 +72,46 @@ class PlaywrightSnapService:
             page.wait_for_timeout(1000)
 
             # ---------------------- 处理弹窗 ----------------------
+            try:
+                # 尝试关闭常见的弹窗
+                close_selectors = [
+                    "button:has-text('关闭')",
+                    "button:has-text('知道了')",
+                    "button:has-text('同意')",
+                    "button:has-text('接受')",
+                    ".popup-close",
+                    ".modal-close",
+                    ".dialog-close",
+                    ".close-btn",
+                    ".ad-close",
+                    ".notice-close"
+                ]
 
+                for selector in close_selectors:
+                    try:
+                        close_elements = page.locator(selector)
+                        if close_elements.count() > 0:
+                            # 点击第一个关闭按钮
+                            close_elements.first.click(timeout=1000)
+                            page.wait_for_timeout(300)
+                            print(f"已关闭弹窗: {selector}")
+                            break  # 关闭一个弹窗后就跳出
+                    except:
+                        continue
+
+                # 处理iframe中的弹窗（如广告）
+                for frame in page.frames:
+                    try:
+                        close_elements = frame.locator("button:has-text('关闭'), .close, .ad-close")
+                        if close_elements.count() > 0:
+                            close_elements.first.click(timeout=1000)
+                            page.wait_for_timeout(300)
+                            print("已关闭iframe中的弹窗")
+                    except:
+                        continue
+
+            except Exception as e:
+                print(f"处理弹窗时出错（不影响继续）: {e}")
 
             # ---------------------- 等待懒加载内容 ----------------------
             try:
@@ -202,8 +242,7 @@ class PlaywrightSnapService:
                             result["success"].append({element_id: filename})
                             print(f"元素截图成功: {element_id}")
                         else:
-                            result["failed"].append(
-                                {"id": element_id, "error": "Screenshot file is empty or too small"})
+                            result["failed"].append({"id": element_id, "error": "Screenshot file is empty or too small"})
 
                     except Exception as e:
                         error_msg = str(e)
@@ -239,8 +278,7 @@ class PlaywrightSnapService:
                             result["success"].append({"full_page": filename})
                             print(f"备用截图成功，文件大小: {os.path.getsize(output_img)} bytes")
                         else:
-                            result["failed"].append(
-                                {"id": "full_page", "error": "Screenshot file is empty or too small"})
+                            result["failed"].append({"id": "full_page", "error": "Screenshot file is empty or too small"})
 
                 except Exception as e:
                     error_msg = str(e)
@@ -265,47 +303,6 @@ class PlaywrightSnapService:
         print(f"截图任务完成，成功: {len(result['success'])}, 失败: {len(result['failed'])}")
         return result
 
-    def _close(self):
-        try:
-            # 尝试关闭常见的弹窗
-            close_selectors = [
-                "button:has-text('关闭')",
-                "button:has-text('知道了')",
-                "button:has-text('同意')",
-                "button:has-text('接受')",
-                ".popup-close",
-                ".modal-close",
-                ".dialog-close",
-                ".close-btn",
-                ".ad-close",
-                ".notice-close"
-            ]
-
-            for selector in close_selectors:
-                try:
-                    close_elements = page.locator(selector)
-                    if close_elements.count() > 0:
-                        # 点击第一个关闭按钮
-                        close_elements.first.click(timeout=1000)
-                        page.wait_for_timeout(300)
-                        print(f"已关闭弹窗: {selector}")
-                        break  # 关闭一个弹窗后就跳出
-                except:
-                    continue
-
-            # 处理iframe中的弹窗（如广告）
-            for frame in page.frames:
-                try:
-                    close_elements = frame.locator("button:has-text('关闭'), .close, .ad-close")
-                    if close_elements.count() > 0:
-                        close_elements.first.click(timeout=1000)
-                        page.wait_for_timeout(300)
-                        print("已关闭iframe中的弹窗")
-                except:
-                    continue
-
-        except Exception as e:
-            print(f"处理弹窗时出错（不影响继续）: {e}")
     def _try_backup_screenshot(self, page, output_path):
         """
         备用截图方案：当全屏截图失败时使用
